@@ -1,10 +1,10 @@
-# 🧠 Quiz Conhecimentos Gerais
+# Quiz Conhecimentos Gerais
 
 Aplicativo Android desenvolvido em **Kotlin** e **Jetpack Compose**, com persistência de dados local utilizando **SQLite** (`SQLiteOpenHelper`). O aplicativo permite que os usuários respondam a perguntas de conhecimentos gerais, acompanhem suas pontuações e recordes históricos, e cadastrem novas perguntas diretamente no banco de dados local.
 
 ---
 
-## 📋 Regras do Quiz
+## Regras do Quiz
 
 1. **Seleção de Perguntas:** O aplicativo carrega um conjunto de perguntas do banco de dados SQLite (incluindo perguntas iniciais e perguntas cadastradas pelo usuário).
 2. **Múltipla Escolha:** Cada pergunta possui três alternativas (Opções A, B e C), sendo apenas uma correta.
@@ -14,7 +14,7 @@ Aplicativo Android desenvolvido em **Kotlin** e **Jetpack Compose**, com persist
 
 ---
 
-## 🗄️ Estrutura do Banco de Dados SQLite (`quiz_gerais.db` - Versão 2)
+## Estrutura do Banco de Dados SQLite (`quiz_gerais.db` - Versão 2)
 
 O banco de dados local possui duas tabelas principais:
 
@@ -34,7 +34,7 @@ Armazena o histórico de pontuações obtidas nas partidas.
 
 ---
 
-## 🛠️ Tecnologias Usadas
+## Tecnologias Usadas
 
 - **Kotlin:** Linguagem de programação principal.
 - **Jetpack Compose:** Toolkit moderno de UI declarativa do Android.
