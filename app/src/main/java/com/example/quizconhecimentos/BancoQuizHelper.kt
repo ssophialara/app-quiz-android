@@ -129,5 +129,18 @@ class BancoQuizHelper(context: Context) : SQLiteOpenHelper(
         db.close()
         return recorde
     }
+
+    fun inserirPergunta(enunciado: String, a: String, b: String, c: String, correta: Int) {
+        val db = writableDatabase
+        val valores = ContentValues().apply {
+            put("enunciado", enunciado)
+            put("opcao_a", a)
+            put("opcao_b", b)
+            put("opcao_c", c)
+            put("correta", correta)
+        }
+        db.insert("perguntas", null, valores)
+        db.close()
+    }
 }
 

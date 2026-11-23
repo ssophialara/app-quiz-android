@@ -6,7 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,16 +43,32 @@ class MainActivity : ComponentActivity() {
 fun AppQuiz() {
     val context = LocalContext.current
     val banco = remember { BancoQuizHelper(context) }
-    val listaPerguntas = remember { banco.buscarPerguntas() }
+    var listaPerguntas by remember { mutableStateOf(banco.buscarPerguntas()) }
+    var mostrarCadastro by remember { mutableStateOf(false) }
+
+    if (mostrarCadastro) {
+        DialogCadastroPergunta(
+            banco = banco,
+            onDismiss = { mostrarCadastro = false },
+            onSalvo = {
+                listaPerguntas = banco.buscarPerguntas()
+                mostrarCadastro = false
+            }
+        )
+    }
 
     if (listaPerguntas.isNotEmpty()) {
-        TelaQuiz(perguntas = listaPerguntas)
+        TelaQuiz(
+            perguntas = listaPerguntas,
+            banco = banco,
+            onAbrirCadastro = { mostrarCadastro = true }
+        )
     }
 }
 
-// Camada Visual (Design de Tela puro - compatível com @Preview)
+// Camada Visual (Design de Tela puro)
 @Composable
-fun TelaQuiz(perguntas: List<Pergunta>) {
+fun TelaQuiz(perguntas: List<Pergunta>, banco: BancoQuizHelper, onAbrirCadastro: () -> Unit) {
     var indiceAtual by remember { mutableStateOf(0) }
     var pontuacao by remember { mutableStateOf(0) }
     var opcaoSelecionada by remember { mutableStateOf<Int?>(null) }
@@ -65,7 +83,7 @@ fun TelaQuiz(perguntas: List<Pergunta>) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFF283593))
-                .padding(horizontal = 24.dp, vertical = 24.dp)
+                .padding(horizontal = 24.dp, vertical = 20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -86,18 +104,34 @@ fun TelaQuiz(perguntas: List<Pergunta>) {
                     )
                 }
 
-                // Selo de Pontuação
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF3949AB)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "⭐ $pontuacao pts",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
+                    // Botão Nova Pergunta
+                    OutlinedButton(
+                        onClick = onAbrirCadastro,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = BorderStroke(1.dp, Color.White),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(text = "➕ Nova Pergunta", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Selo de Pontuação
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF3949AB)
+                    ) {
+                        Text(
+                            text = "⭐ $pontuacao pts",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }
@@ -118,6 +152,7 @@ fun TelaQuiz(perguntas: List<Pergunta>) {
             TelaResultado(
                 pontuacao = pontuacao,
                 total = perguntas.size,
+                banco = banco,
                 onReiniciar = {
                     indiceAtual = 0
                     pontuacao = 0
@@ -234,7 +269,14 @@ fun TelaQuiz(perguntas: List<Pergunta>) {
 }
 
 @Composable
-fun TelaResultado(pontuacao: Int, total: Int, onReiniciar: () -> Unit) {
+fun TelaResultado(pontuacao: Int, total: Int, banco: BancoQuizHelper, onReiniciar: () -> Unit) {
+    var melhorPontuacao by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        banco.salvarRecorde(pontuacao)
+        melhorPontuacao = banco.buscarMelhorPontuacao()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -270,6 +312,16 @@ fun TelaResultado(pontuacao: Int, total: Int, onReiniciar: () -> Unit) {
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Seu Recorde Histórico: $melhorPontuacao pontos",
+                    fontSize = 16.sp,
+                    color = Color(0xFF2E7D32),
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
@@ -288,14 +340,87 @@ fun TelaResultado(pontuacao: Int, total: Int, onReiniciar: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun PreviewTelaQuiz() {
-    MaterialTheme {
-        TelaQuiz(
-            perguntas = listOf(
-                Pergunta(1, "Qual é o maior planeta do Sistema Solar?", listOf("Saturno", "Júpiter", "Netuno"), 1)
-            )
-        )
-    }
+fun DialogCadastroPergunta(
+    banco: BancoQuizHelper,
+    onDismiss: () -> Unit,
+    onSalvo: () -> Unit
+) {
+    var enunciado by remember { mutableStateOf("") }
+    var opA by remember { mutableStateOf("") }
+    var opB by remember { mutableStateOf("") }
+    var opC by remember { mutableStateOf("") }
+    var correta by remember { mutableStateOf(0) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cadastrar Nova Pergunta", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = enunciado,
+                    onValueChange = { enunciado = it },
+                    label = { Text("Enunciado da Pergunta") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = opA,
+                    onValueChange = { opA = it },
+                    label = { Text("Opção A") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = opB,
+                    onValueChange = { opB = it },
+                    label = { Text("Opção B") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = opC,
+                    onValueChange = { opC = it },
+                    label = { Text("Opção C") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Resposta Correta:", fontWeight = FontWeight.SemiBold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    listOf("A (0)", "B (1)", "C (2)").forEachIndexed { index, label ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = correta == index,
+                                onClick = { correta = index }
+                            )
+                            Text(label, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (enunciado.isNotBlank() && opA.isNotBlank() && opB.isNotBlank() && opC.isNotBlank()) {
+                        banco.inserirPergunta(enunciado, opA, opB, opC, correta)
+                        onSalvo()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF283593))
+            ) {
+                Text("Salvar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
